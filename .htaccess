@@ -1,0 +1,6 @@
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+RewriteRule ^v1/(paragraphs|words|bytes|lists)/(any|lorem)/([0-9]+)/([0-9]+)/([a-z]+).api$		index.php?type=$1&start=$2&amount=$3&items=$4&output=$5	[L,NC,QSA]
+
