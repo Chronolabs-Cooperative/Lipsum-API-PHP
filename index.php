@@ -29,43 +29,61 @@
 	$salter = ((float)(mt_rand(0,1)==1?'':'-').$parts[1].'.'.$parts[0]) / sqrt((float)$parts[1].'.'.intval(cosh($parts[0])))*tanh($parts[1]) * mt_rand(1, intval($parts[0] / $parts[1]));
 	header('Blowfish-salt: '. $salter);
 	
-	global $domain, $protocol, $business, $entity, $contact, $referee, $peerings, $source;
 	require_once __DIR__ . DIRECTORY_SEPARATOR . 'apiconfig.php';
 	
-	/**
-	 * Global API Configurations and Setting from file Constants!
-	 */
-	$domain = getDomainSupportism('domain', $_SERVER["HTTP_HOST"]);
-	$protocol = getDomainSupportism('protocol', $_SERVER["HTTP_HOST"]);
-	$business = getDomainSupportism('business', $_SERVER["HTTP_HOST"]);
-	$entity = getDomainSupportism('entity', $_SERVER["HTTP_HOST"]);
-	$contact = getDomainSupportism('contact', $_SERVER["HTTP_HOST"]);
-	$referee = getDomainSupportism('referee', $_SERVER["HTTP_HOST"]);
-	$peerings = getPeersSupporting();
+	global $hashing;
 	
 	/**
 	 * URI Path Finding of API URL Source Locality
 	 * @var unknown_type
 	 */
-	$pu = parse_url($_SERVER['REQUEST_URI']);
-	$source = (isset($_SERVER['HTTPS'])?'https://':'http://').strtolower($_SERVER['HTTP_HOST']).$pu['path'];
-	unset($pu);
+	$odds = $inner = array();
+	foreach($_GET as $key => $values) {
+	    if (!isset($inner[$key])) {
+	        $inner[$key] = $values;
+	    } elseif (!in_array(!is_array($values) ? $values : md5(json_encode($values, true)), array_keys($odds[$key]))) {
+	        if (is_array($values)) {
+	            $odds[$key][md5(json_encode($inner[$key] = $values, true))] = $values;
+	        } else {
+	            $odds[$key][$inner[$key] = $values] = "$values--$key";
+	        }
+	    }
+	}
 	
-	global $hashing;
-		
-	define('MAXIMUM_QUERIES', 125);
-	ini_set('memory_limit', '256M');
-	include dirname(__FILE__).'/functions.php';
+	foreach($_POST as $key => $values) {
+	    if (!isset($inner[$key])) {
+	        $inner[$key] = $values;
+	    } elseif (!in_array(!is_array($values) ? $values : md5(json_encode($values, true)), array_keys($odds[$key]))) {
+	        if (is_array($values)) {
+	            $odds[$key][md5(json_encode($inner[$key] = $values, true))] = $values;
+	        } else {
+	            $odds[$key][$inner[$key] = $values] = "$values--$key";
+	        }
+	    }
+	}
+	
+	foreach(parse_url('http://'.$_SERVER['HTTP_HOST'].$_SERVER['REQUEST_URI'].(strpos($_SERVER['REQUEST_URI'], '?')?'&':'?').$_SERVER['QUERY_STRING'], PHP_URL_QUERY) as $key => $values) {
+	    if (!isset($inner[$key])) {
+	        $inner[$key] = $values;
+	    } elseif (!in_array(!is_array($values) ? $values : md5(json_encode($values, true)), array_keys($odds[$key]))) {
+	        if (is_array($values)) {
+	            $odds[$key][md5(json_encode($inner[$key] = $values, true))] = $values;
+	        } else {
+	            $odds[$key][$inner[$key] = $values] = "$values--$key";
+	        }
+	    }
+	}
+	
 	
 	$help=false;
-	if ((!isset($_GET['output']) || empty($_GET['output'])) || (!isset($_GET['type']) || empty($_GET['type'])) || (!isset($_GET['items']) || empty($_GET['items'])) || (!isset($_GET['start']) || empty($_GET['start'])) || (!isset($_GET['amount']) || empty($_GET['amount']))) {
+	if ((!isset($inner['output']) || empty($inner['output'])) || (!isset($inner['type']) || empty($inner['type'])) || (!isset($inner['items']) || empty($inner['items'])) || (!isset($inner['start']) || empty($inner['start'])) || (!isset($inner['amount']) || empty($inner['amount']))) {
 		$help=true;
 	} else {
-		$output = (string)trim($_GET['output']);
-		$type = (string)trim($_GET['type']);
-		$items = (integer)trim($_GET['items']);	
-		$amount = (integer)trim($_GET['amount']);
-		$start = (string)trim($_GET['start']);	
+		$output = (string)trim($inner['output']);
+		$type = (string)trim($inner['type']);
+		$items = (integer)trim($inner['items']);	
+		$amount = (integer)trim($inner['amount']);
+		$start = (string)trim($inner['start']);	
 	}
 		
 	/**
@@ -111,7 +129,7 @@
 	for($i = 1; $i <= $items; $i ++)
 	{
 		$counter++;
-		$data[$counter] = getLipsum($amount, $type, $start, $output);
+		$data[$counter] = getLoremIpsum($amount, $type, $start, $output);
 	}
 	switch ($output) {
 		default:
@@ -124,10 +142,8 @@
 			echo '</pre>';
 			break;
 		case 'raw':
-			if (!is_array($data))
-				echo $data;
-			else
-				echo "{ '". implode("' } { '", $data) . "' }";
+		    header('Content-type: application/x-httpd-php');
+			echo "<?php\n\nreturn ". var_export($data, true) . ";\n\n?>";
 			break;
 		case 'json':
 			header('Content-type: application/json');
